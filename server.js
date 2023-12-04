@@ -63,7 +63,9 @@ const typeDefs = gql`
 		allUsuarios: [Usuario]!
 		findUsuario(nombre: String!): Usuario
 		allProductos: [Producto]!
-		findProductoById(id: ID): Producto 
+		findProductoById(id: ID!): Producto 
+		getUrlPago(valor: Int!): Alert
+		getEstadoPago(token: String!): Alert
 	}
 
 	type Mutation {
@@ -94,10 +96,49 @@ const resolvers = {
 			const {nombre} = args
 			return await Usuario.find(user => user.nombre == nombre)
 		},
-		findProductoById: async (root, args) => {
-			const {id} = args
-			return await Producto.find(producto => producto.id == id)
-		}
+		async findProductoById(obj, {id}){
+			const producto = await Producto.findById(id);
+			return producto;
+		},
+		async getUrlPago(obj, {valor}){
+			const resp = await fetch("https://webpay3gint.transbank.cl/rswebpaytransaction/api/webpay/v1.2/transactions",
+				{
+				headers: {'Content-Type' : 'application/json',
+									'Tbk-Api-Key-Id': '597055555532',
+									'Tbk-Api-Key-Secret': '579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C'
+									},
+				method: 'post',
+				body: JSON.stringify(
+					{
+						"buy_order": "ordenCompra12345678",
+						"session_id": "sesion1234557545",
+						"amount": valor,
+						"return_url": "http://localhost:3000/pedido"
+					})})
+			.then(result => result.json())
+			.catch(err => console.log(err))
+
+			return {
+				message: `${resp.url}?token_ws=${resp.token}`
+			}
+		},
+
+		async getEstadoPago(obj, {token}){
+			const resp = await fetch(`https://webpay3gint.transbank.cl/rswebpaytransaction/api/webpay/v1.2/transactions/${token}`,
+				{
+				headers: {'Content-Type' : 'application/json',
+									'Tbk-Api-Key-Id': '597055555532',
+									'Tbk-Api-Key-Secret': '579B532A7440BB0C9079DED94D31EA1615BACEB56610332264630D42D0A36B1C'
+									},
+				method: 'put',
+			})
+			.then(result => result.json())
+			.catch(err => console.log(err))
+
+			return {
+				message: resp.status
+			}
+		},
 	},
 	Mutation: {
 		async addProducto(obj, {input}){
@@ -156,5 +197,5 @@ startServer();
 const app = express()
 app.use(cors());
 app.listen(8090, function(){
-    console.log('servidor iniciado');
+  console.log('servidor iniciado');
 })
