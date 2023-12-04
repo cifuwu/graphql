@@ -24,40 +24,114 @@ const typeDefs = gql`
 	type Usuario {
 		id: ID!
 		nombre: String!
-        correo: String
-        caca: String
+		correo: String
+		caca: String
 	}
 
-    type Usuario {
+	type Alert{
+		message: String
+	}
+
+	type Foto {
+		id: ID!
+		url: String
+	}
+
+  type Producto {
 		id: ID!
 		nombre: String!
-        precio: String!
-        descripccion: String
+		precio: Int!
+		descripccion: String,
+		fotos: [Foto],
+		categoria: String,
+	}
+
+
+	input FotoInput {
+		url: String
+	}
+
+	input ProductoInput {
+		nombre: String!
+		precio: Int!
+		descripccion: String,
+		categoria: String,
 	}
 
 	type Query {
 		usuarioCount: Int!
 		allUsuarios: [Usuario]!
 		findUsuario(nombre: String!): Usuario
+		allProductos: [Producto]!
+		findProductoById(id: ID): Producto 
 	}
+
+	type Mutation {
+		addProducto(input: ProductoInput): Producto
+		updateProducto(id: ID!, input: ProductoInput): Producto
+		deleteProducto(id: ID!): Alert
+		agregarFotoAProducto(productoId: ID!, foto: FotoInput): Producto
+	}
+
 `
 
 
 const resolvers = {
 	Query: {
 		usuarioCount: async () => {
-            const usuarios = await Usuario.find()
-            return usuarios.length
-        },
+			const usuarios = await Usuario.find()
+			return usuarios.length
+		},
 		allUsuarios: async () => {
-            const usuarios = await Usuario.find()
-            return usuarios
-        },
+				const usuarios = await Usuario.find()
+				return usuarios
+			},
+		allProductos: async () => {
+			const productos = await Producto.find()
+			return productos
+		},
 		findUsuario: async (root, args) => {
 			const {nombre} = args
 			return await Usuario.find(user => user.nombre == nombre)
+		},
+		findProductoById: async (root, args) => {
+			const {id} = args
+			return await Producto.find(producto => producto.id == id)
 		}
+	},
+	Mutation: {
+		async addProducto(obj, {input}){
+			const producto = new Producto(input);
+			await producto.save();
+			return producto;
+		},
+		async updateProducto(obj, {id, input}){
+			const producto = await Producto.findByIdAndUpdate(id, input);
+			return producto;
+		},
+		async deleteProducto(obj, {id}){
+			await Producto.deleteOne({_id : id})
+			return {
+				message: "Producto eliminado correctamente"
+			}
+		},
+		agregarFotoAProducto: async (parent, { productoId, foto }, context, info) => {
+      try {
+        const producto = await Producto.findById(productoId);
+        if (!producto) {
+          throw new Error('Producto no encontrado');
+        }
+        producto.fotos.push(foto);
+        await producto.save();
+
+        return producto;
+      } catch (error) {
+        throw new Error(`Error al agregar foto a producto: ${error.message}`);
+      }
+    },
+		
 	}
+
 }
 
 

@@ -3,8 +3,10 @@ const mongoose = require('mongoose');
 
 const productoSchema = new mongoose.Schema({
     nombre: String,
-    precio: String,
-    descripccion: String
+    precio: Number,
+    descripccion: String,
+    fotos: [{ url: String }],
+    categoria: String
 }) 
 
 
